@@ -244,19 +244,19 @@
         /* Botones de navegación transparentes - no tapar controles del video */
         .channel-nav {
             position: absolute;
-            top: 60px;          /* dejar espacio arriba */
-            bottom: 100px;      /* dejar espacio abajo para controles nativos */
-            width: 12%;         /* angosto, solo bordes */
+            top: 50px;          /* dejar espacio arriba */
+            bottom: 90px;       /* dejar espacio abajo para controles nativos */
+            width: 25%;         /* mas ancho para facilitar click en TV */
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            opacity: 0.15;      /* siempre un poco visibles para TV/control remoto */
+            opacity: 0.25;      /* siempre visibles para TV/control remoto */
             transition: opacity 0.3s, background 0.3s;
             z-index: 10;        /* por debajo de los controles nativos del video */
-            font-size: 2.5rem;
-            color: rgba(255,255,255,0.9);
-            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            font-size: 3rem;
+            color: rgba(255,255,255,0.95);
+            text-shadow: 0 2px 15px rgba(0,0,0,0.9);
             user-select: none;
             pointer-events: auto;
             border-radius: 12px;
@@ -265,38 +265,43 @@
 
         .player-wrapper:hover .channel-nav,
         .channel-nav:focus {
-            opacity: 0.6;
+            opacity: 0.7;
         }
 
         .channel-nav:hover,
-        .channel-nav:focus-visible {
-            opacity: 0.9 !important;
-            background: rgba(255,255,255,0.1);
+        .channel-nav:focus-visible,
+        .channel-nav.active {
+            opacity: 0.95 !important;
+            background: rgba(255,255,255,0.15);
         }
 
         .channel-nav-prev {
-            left: 5px;
-            padding-left: 10px;
+            left: 0;
+            padding-left: 20px;
             justify-content: flex-start;
         }
 
         .channel-nav-next {
-            right: 5px;
-            padding-right: 10px;
+            right: 0;
+            padding-right: 20px;
             justify-content: flex-end;
         }
 
-        /* En fullscreen, visibles para facilitar cambio de canal con control remoto */
+        /* En fullscreen, mas visibles y anchos para control remoto */
         .player-wrapper:fullscreen .channel-nav,
         .player-wrapper:-webkit-full-screen .channel-nav {
-            opacity: 0.35;
-            bottom: 100px;
-            top: 60px;
+            opacity: 0.45;
+            bottom: 90px;
+            top: 50px;
+            width: 30%;
+            font-size: 4rem;
         }
 
         .player-wrapper:fullscreen .channel-nav:focus,
-        .player-wrapper:-webkit-full-screen .channel-nav:focus {
-            opacity: 0.9;
+        .player-wrapper:-webkit-full-screen .channel-nav:focus,
+        .player-wrapper:fullscreen .channel-nav.active,
+        .player-wrapper:-webkit-full-screen .channel-nav.active {
+            opacity: 0.95;
         }
         
         @media (max-width: 600px) {
@@ -728,6 +733,39 @@
             
             // Doble click en video = fullscreen
             video.addEventListener('dblclick', toggleFullscreen);
+            
+            // Click en zonas del video para cambiar canal (izquierda/anterior, derecha/siguiente)
+            const playerWrapper = document.getElementById('playerWrapper');
+            if (playerWrapper) {
+                playerWrapper.addEventListener('click', function(e) {
+                    // Solo si estamos en player activo y no se hizo click en un boton de nav
+                    if (!document.getElementById('playerSection').classList.contains('active')) return;
+                    if (e.target.closest('.channel-nav')) return;
+                    
+                    const rect = playerWrapper.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const width = rect.width;
+                    
+                    // Zona izquierda 40% = anterior, derecha 40% = siguiente, centro 20% = nada
+                    if (x < width * 0.4) {
+                        console.log('[TV Click] Zona izquierda - canal anterior');
+                        highlightNav('navPrev');
+                        prevChannel();
+                    } else if (x > width * 0.6) {
+                        console.log('[TV Click] Zona derecha - canal siguiente');
+                        highlightNav('navNext');
+                        nextChannel();
+                    }
+                });
+            }
+            
+            function highlightNav(id) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('active');
+                    setTimeout(() => el.classList.remove('active'), 300);
+                }
+            }
             
             // Cargar canales
             loadChannels();
