@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script>
-        // Cargar config.js con anti-cache para siempre tener la URL del tunel actual
-        document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
-    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -251,7 +247,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            opacity: 0;         /* invisibles por defecto */
+            opacity: 0.15;      /* siempre un poco visibles para TV/control remoto */
             transition: opacity 0.3s, background 0.3s;
             z-index: 10;        /* por debajo de los controles nativos del video */
             font-size: 2.5rem;
@@ -260,14 +256,17 @@
             user-select: none;
             pointer-events: auto;
             border-radius: 12px;
+            outline: none;
         }
 
-        .player-wrapper:hover .channel-nav {
-            opacity: 0.3;
+        .player-wrapper:hover .channel-nav,
+        .channel-nav:focus {
+            opacity: 0.6;
         }
 
-        .channel-nav:hover {
-            opacity: 0.8 !important;
+        .channel-nav:hover,
+        .channel-nav:focus-visible {
+            opacity: 0.9 !important;
             background: rgba(255,255,255,0.1);
         }
 
@@ -283,12 +282,17 @@
             justify-content: flex-end;
         }
 
-        /* En fullscreen, mismo espacio para controles */
+        /* En fullscreen, visibles para facilitar cambio de canal con control remoto */
         .player-wrapper:fullscreen .channel-nav,
         .player-wrapper:-webkit-full-screen .channel-nav {
-            opacity: 0.25;
+            opacity: 0.35;
             bottom: 100px;
             top: 60px;
+        }
+
+        .player-wrapper:fullscreen .channel-nav:focus,
+        .player-wrapper:-webkit-full-screen .channel-nav:focus {
+            opacity: 0.9;
         }
         
         @media (max-width: 600px) {
@@ -322,8 +326,8 @@
             <!-- Indicador de canal para TV -->
             <div class="tv-channel-indicator" id="channelIndicator"></div>
             <!-- Botones transparentes para cambiar canal (fullscreen) -->
-            <div class="channel-nav channel-nav-prev" id="navPrev" title="Canal anterior">&#10094;</div>
-            <div class="channel-nav channel-nav-next" id="navNext" title="Canal siguiente">&#10095;</div>
+            <div class="channel-nav channel-nav-prev" id="navPrev" title="Canal anterior" tabindex="0">&#10094;</div>
+            <div class="channel-nav channel-nav-next" id="navNext" title="Canal siguiente" tabindex="0">&#10095;</div>
         </div>
         
         <div class="player-controls">
@@ -352,7 +356,7 @@
         // Cargar canales al iniciar - AUTO-PLAY CHV (Chilevisión) por defecto
         async function loadChannels() {
             try {
-                const res = await fetch(BASE_URL + '/api/channels');
+                const res = await fetch('/api/channels');
                 const data = await res.json();
                 if (data.success) {
                     channels = data.channels;
@@ -416,7 +420,7 @@
             setStatus('loading', 'Cargando...');
             
             // Cargar stream
-            await loadStream(BASE_URL + channel.proxyUrl);
+            await loadStream(channel.proxyUrl);
         }
 
         // Cargar stream en player
@@ -436,8 +440,49 @@
 
                     hls = new Hls({
                         enableWorker: false,
-                        lowLatencyMode: true,
+                        lowLatencyMode: false,
                         debug: false,
+                        capLevelToPlayerSize: true,
+                        startLevel: -1,
+                        abrEwmaDefaultEstimate: 500000,
+                        abrBandWidthFactor: 0.95,
+                        abrBandWidthUpFactor: 0.7,
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
+                        liveSyncDurationCount: 3,
+                        liveMaxLatencyDurationCount: 10,
+                        fragLoadPolicy: {
+                            default: {
+                                maxTimeToFirstByteMs: 10000,
+                                maxLoadTimeMs: 20000,
+                                timeoutRetry: {
+                                    maxNumRetry: 4,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                },
+                                errorRetry: {
+                                    maxNumRetry: 4,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }
+                            }
+                        },
+                        playlistLoadPolicy: {
+                            default: {
+                                maxTimeToFirstByteMs: 10000,
+                                maxLoadTimeMs: 20000,
+                                timeoutRetry: {
+                                    maxNumRetry: 3,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                },
+                                errorRetry: {
+                                    maxNumRetry: 3,
+                                    retryDelayMs: 1000,
+                                    maxRetryDelayMs: 8000
+                                }
+                            }
+                        },
                         xhrSetup: function(xhr, url) {
                             xhr.withCredentials = false;
                         }
@@ -456,11 +501,27 @@
                     
                     hls.on(Hls.Events.ERROR, (event, data) => {
                         console.error('[Player] HLS Error:', data.type, data.details);
+                        
+                        // Si es error de red, bajar calidad automaticamente si es posible
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            const currentLevel = hls.currentLevel;
+                            if (currentLevel > 0) {
+                                console.log('[Player] Bajando calidad por inestabilidad de red...');
+                                hls.currentLevel = currentLevel - 1;
+                                hls.loadLevel = currentLevel - 1;
+                            }
+                        }
+                        
                         if (data.fatal) {
                             switch(data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.log('[Player] Error de red, reintentando...');
-                                    showError('Error de conexión, reintentando...');
+                                    console.log('[Player] Error de red fatal, reintentando...');
+                                    showError('Red inestable, reintentando...');
+                                    // Forzar nivel mas bajo si hay disponibles
+                                    if (hls.levels && hls.levels.length > 1) {
+                                        hls.currentLevel = 0;
+                                        hls.loadLevel = 0;
+                                    }
                                     setTimeout(() => hls.startLoad(), 2000);
                                     break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
@@ -513,7 +574,7 @@
         // Recargar stream actual
         function reloadStream() {
             if (currentChannel) {
-                loadStream(BASE_URL + currentChannel.proxyUrl);
+                loadStream(currentChannel.proxyUrl);
             }
         }
 
@@ -636,20 +697,28 @@
             const navNext = document.getElementById('navNext');
             
             if (navPrev) {
-                navPrev.addEventListener('click', function(e) {
+                const goPrev = function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[Nav] Click anterior');
+                    console.log('[Nav] Anterior');
                     prevChannel();
+                };
+                navPrev.addEventListener('click', goPrev);
+                navPrev.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') goPrev(e);
                 });
             }
             
             if (navNext) {
-                navNext.addEventListener('click', function(e) {
+                const goNext = function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[Nav] Click siguiente');
+                    console.log('[Nav] Siguiente');
                     nextChannel();
+                };
+                navNext.addEventListener('click', goNext);
+                navNext.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') goNext(e);
                 });
             }
             
