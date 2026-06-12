@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        // Cargar config.js con anti-cache para siempre tener la URL del tunel actual
+        document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
