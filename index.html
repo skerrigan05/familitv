@@ -6,7 +6,8 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Cargar config.js con anti-cache para siempre tener la URL del tunel actual
+        // Valor por defecto para servidor local; config.js lo sobreescribe si existe
+        var BASE_URL = '';
         document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
@@ -362,10 +363,15 @@
         let hls = null;
         const video = document.getElementById('video');
 
+        // BASE_URL puede venir de config.js (GitHub Pages / dominio fijo)
+        const BASE = (typeof BASE_URL !== 'undefined' && BASE_URL) ? BASE_URL.replace(/\/$/, '') : '';
+        function apiUrl(path) { return BASE + path; }
+        function proxyUrl(url) { return BASE + url; }
+
         // Cargar canales al iniciar - AUTO-PLAY CHV (Chilevisión) por defecto
         async function loadChannels() {
             try {
-                const res = await fetch('/api/channels');
+                const res = await fetch(apiUrl('/api/channels'));
                 const data = await res.json();
                 if (data.success) {
                     channels = data.channels;
@@ -429,7 +435,7 @@
             setStatus('loading', 'Cargando...');
             
             // Cargar stream
-            await loadStream(channel.proxyUrl);
+            await loadStream(proxyUrl(channel.proxyUrl));
         }
 
         // Cargar stream en player
@@ -636,12 +642,12 @@
         // Teclas de navegación optimizadas para TV / control remoto
         document.addEventListener('keydown', function(e) {
             const playerActive = document.getElementById('playerSection').classList.contains('active');
+            const isFullscreen = !!document.fullscreenElement;
             
-            // En la grilla: Enter/OK selecciona canal, flechas navegan
+            // En la grilla: Enter/OK selecciona primer canal disponible
             if (!playerActive) {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' || e.key === 'OK') {
                     e.preventDefault();
-                    // Seleccionar primer canal disponible si no hay selección
                     const firstAvailable = channels.find(c => c.hasStream);
                     if (firstAvailable) playChannel(firstAvailable.id);
                 }
@@ -651,10 +657,13 @@
             // En el player: controles de TV
             switch(e.key) {
                 case 'ArrowLeft':
-                case 'Backspace':
-                case 'Escape':
                     e.preventDefault();
-                    showGrid();
+                    if (isFullscreen) { prevChannel(); }
+                    else { showGrid(); }
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (isFullscreen) { nextChannel(); }
                     break;
                 case 'ArrowUp':
                 case 'PageUp':
@@ -665,6 +674,20 @@
                 case 'PageDown':
                     e.preventDefault();
                     nextChannel();
+                    break;
+                case 'MediaTrackNext':
+                    e.preventDefault();
+                    nextChannel();
+                    break;
+                case 'MediaTrackPrevious':
+                    e.preventDefault();
+                    prevChannel();
+                    break;
+                case 'Backspace':
+                case 'Escape':
+                    e.preventDefault();
+                    if (isFullscreen) document.exitFullscreen();
+                    else showGrid();
                     break;
                 case 'f':
                 case 'F':
@@ -734,29 +757,34 @@
             // Doble click en video = fullscreen
             video.addEventListener('dblclick', toggleFullscreen);
             
-            // Click en zonas del video para cambiar canal (izquierda/anterior, derecha/siguiente)
+            // Click/touch en zonas del video para cambiar canal (izquierda/anterior, derecha/siguiente)
             const playerWrapper = document.getElementById('playerWrapper');
             if (playerWrapper) {
-                playerWrapper.addEventListener('click', function(e) {
+                function handleZoneInput(e) {
                     // Solo si estamos en player activo y no se hizo click en un boton de nav
                     if (!document.getElementById('playerSection').classList.contains('active')) return;
                     if (e.target.closest('.channel-nav')) return;
                     
                     const rect = playerWrapper.getBoundingClientRect();
-                    const x = e.clientX - rect.left;
+                    const clientX = e.clientX || (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0);
+                    const x = clientX - rect.left;
                     const width = rect.width;
+                    if (width === 0) return;
                     
                     // Zona izquierda 40% = anterior, derecha 40% = siguiente, centro 20% = nada
                     if (x < width * 0.4) {
-                        console.log('[TV Click] Zona izquierda - canal anterior');
+                        console.log('[TV Input] Zona izquierda - canal anterior');
                         highlightNav('navPrev');
                         prevChannel();
                     } else if (x > width * 0.6) {
-                        console.log('[TV Click] Zona derecha - canal siguiente');
+                        console.log('[TV Input] Zona derecha - canal siguiente');
                         highlightNav('navNext');
                         nextChannel();
                     }
-                });
+                }
+                playerWrapper.addEventListener('click', handleZoneInput);
+                playerWrapper.addEventListener('touchend', handleZoneInput);
+                playerWrapper.addEventListener('pointerup', handleZoneInput);
             }
             
             function highlightNav(id) {
