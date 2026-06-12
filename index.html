@@ -6,8 +6,9 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Valor por defecto para servidor local; config.js lo sobreescribe si existe
-        var BASE_URL = '';
+        // Espacio de nombres global; config.js sobreescribe BASE_URL si existe
+        window.FAMILITV = window.FAMILITV || {};
+        window.FAMILITV.BASE_URL = '';
         document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
@@ -364,7 +365,9 @@
         const video = document.getElementById('video');
 
         // BASE_URL puede venir de config.js (GitHub Pages / dominio fijo)
-        const BASE = (typeof BASE_URL !== 'undefined' && BASE_URL) ? BASE_URL.replace(/\/$/, '') : '';
+        const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
+            ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
+            : '';
         function apiUrl(path) { return BASE + path; }
         function proxyUrl(url) { return BASE + url; }
 
