@@ -2,42 +2,663 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=https://physics-generates-enrolled-designing.trycloudflare.com">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamiliTV - Redirigiendo...</title>
+    <title>FamiliTV - Canales de Chile</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        // Cargar config.js con anti-cache para siempre tener la URL del tunel actual
+        document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
+    </script>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
             color: white;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        /* Grid de canales */
+        .grid-container {
+            max-width: 1000px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        
+        .grid-title {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: #aaa;
+        }
+        
+        .channel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+        }
+        
+        .channel-card {
+            aspect-ratio: 16/9;
+            background: #0f0f23;
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
         }
-        .loader {
-            border: 4px solid rgba(255,255,255,0.1);
-            border-left-color: #e30613;
+        
+        .channel-card:hover {
+            transform: scale(1.05);
+            border-color: rgba(255,255,255,0.3);
+        }
+        
+        .channel-card.active {
+            border-color: #4CAF50;
+            box-shadow: 0 0 20px rgba(76,175,80,0.3);
+        }
+        
+        .channel-number {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(255,255,255,0.1);
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        a { color: #e30613; }
+        
+        .channel-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        
+        .channel-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .live-dot {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        /* Player */
+        .player-section {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+            display: none;
+        }
+        
+        .player-section.active {
+            display: block;
+        }
+        
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .player-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 0;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .channel-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .info-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .info-text h2 {
+            font-size: 1.1rem;
+            margin-bottom: 3px;
+        }
+        
+        .status {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #333;
+        }
+        
+        .status.live {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status.loading {
+            background: #ff9800;
+            color: black;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #e30613;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #c00510;
+        }
+        
+        .btn-secondary {
+            background: #333;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #444;
+        }
+        
+        .error-message {
+            background: #d9534f;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        /* Botones de navegación transparentes - no tapar controles del video */
+        .channel-nav {
+            position: absolute;
+            top: 60px;          /* dejar espacio arriba */
+            bottom: 100px;      /* dejar espacio abajo para controles nativos */
+            width: 12%;         /* angosto, solo bordes */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;         /* invisibles por defecto */
+            transition: opacity 0.3s, background 0.3s;
+            z-index: 10;        /* por debajo de los controles nativos del video */
+            font-size: 2.5rem;
+            color: rgba(255,255,255,0.9);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            user-select: none;
+            pointer-events: auto;
+            border-radius: 12px;
+        }
+
+        .player-wrapper:hover .channel-nav {
+            opacity: 0.3;
+        }
+
+        .channel-nav:hover {
+            opacity: 0.8 !important;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .channel-nav-prev {
+            left: 5px;
+            padding-left: 10px;
+            justify-content: flex-start;
+        }
+
+        .channel-nav-next {
+            right: 5px;
+            padding-right: 10px;
+            justify-content: flex-end;
+        }
+
+        /* En fullscreen, mismo espacio para controles */
+        .player-wrapper:fullscreen .channel-nav,
+        .player-wrapper:-webkit-full-screen .channel-nav {
+            opacity: 0.25;
+            bottom: 100px;
+            top: 60px;
+        }
+        
+        @media (max-width: 600px) {
+            .channel-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="loader"></div>
-    <h1>FamiliTV</h1>
-    <p>Redirigiendo a la señal en vivo...</p>
-    <p>Si no redirige automáticamente, <a href="https://physics-generates-enrolled-designing.trycloudflare.com">haz clic aquí</a>.</p>
+    <div class="header">
+        <h1>FamiliTV</h1>
+        <p>Canales de televisión chilenos en vivo</p>
+    </div>
+
+    <!-- Grid de canales -->
+    <div class="grid-container" id="gridSection">
+        <div class="grid-title">Selecciona un canal</div>
+        <div class="channel-grid" id="channelGrid">
+            <!-- Canales se cargan dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Player -->
+    <div class="player-section" id="playerSection">
+        <div class="player-wrapper" id="playerWrapper">
+            <video id="video" controls playsinline></video>
+            <!-- Indicador de canal para TV -->
+            <div class="tv-channel-indicator" id="channelIndicator"></div>
+            <!-- Botones transparentes para cambiar canal (fullscreen) -->
+            <div class="channel-nav channel-nav-prev" id="navPrev" title="Canal anterior">&#10094;</div>
+            <div class="channel-nav channel-nav-next" id="navNext" title="Canal siguiente">&#10095;</div>
+        </div>
+        
+        <div class="player-controls">
+            <div class="channel-info">
+                <div class="info-logo" id="playerLogo">TVN</div>
+                <div class="info-text">
+                    <h2 id="playerChannel">TVN Chile</h2>
+                    <span class="status loading" id="playerStatus">Cargando...</span>
+                </div>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="showGrid()">← Volver</button>
+                <button class="btn btn-primary" onclick="reloadStream()">Recargar</button>
+            </div>
+        </div>
+        
+        <div id="errorMessage" class="error-message"></div>
+    </div>
+
     <script>
-        window.location.href = "https://physics-generates-enrolled-designing.trycloudflare.com";
+        let channels = [];
+        let currentChannel = null;
+        let hls = null;
+        const video = document.getElementById('video');
+
+        // Cargar canales al iniciar - AUTO-PLAY CHV (Chilevisión) por defecto
+        async function loadChannels() {
+            try {
+                const res = await fetch(BASE_URL + '/api/channels');
+                const data = await res.json();
+                if (data.success) {
+                    channels = data.channels;
+                    renderGrid();
+                    
+                    // AUTO-INICIAR: Buscar Chilevisión (chv) y reproducir automáticamente
+                    const chvChannel = channels.find(c => c.id === 'chv');
+                    if (chvChannel && chvChannel.hasStream) {
+                        console.log('[App] Auto-iniciando Chilevisión...');
+                        setTimeout(() => playChannel('chv'), 500);
+                    } else {
+                        // Fallback: primer canal disponible
+                        const firstAvailable = channels.find(c => c.hasStream);
+                        if (firstAvailable) {
+                            console.log('[App] Auto-iniciando primer canal:', firstAvailable.id);
+                            setTimeout(() => playChannel(firstAvailable.id), 500);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error cargando canales:', e);
+            }
+        }
+
+        // Renderizar grilla
+        function renderGrid() {
+            const grid = document.getElementById('channelGrid');
+            grid.innerHTML = channels.map(ch => `
+                <div class="channel-card ${ch.hasStream ? '' : 'disabled'}" 
+                     onclick="playChannel('${ch.id}')"
+                     style="--ch-color: ${ch.color}">
+                    <div class="channel-number">${ch.number}</div>
+                    ${ch.hasStream ? '<div class="live-dot"></div>' : ''}
+                    <div class="channel-logo" style="background: ${ch.color}30; color: ${ch.color}">
+                        ${ch.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div class="channel-name">${ch.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // Reproducir canal
+        async function playChannel(channelId) {
+            const channel = channels.find(c => c.id === channelId);
+            if (!channel || !channel.hasStream) return;
+            
+            currentChannel = channel;
+            
+            // Mostrar indicador de canal
+            showChannelIndicator(channel.name);
+            
+            // Cambiar vista
+            document.getElementById('gridSection').style.display = 'none';
+            document.getElementById('playerSection').classList.add('active');
+            
+            // Actualizar info
+            document.getElementById('playerLogo').textContent = channel.name.substring(0, 2).toUpperCase();
+            document.getElementById('playerLogo').style.background = channel.color + '30';
+            document.getElementById('playerLogo').style.color = channel.color;
+            document.getElementById('playerChannel').textContent = channel.name;
+            setStatus('loading', 'Cargando...');
+            
+            // Cargar stream
+            await loadStream(BASE_URL + channel.proxyUrl);
+        }
+
+        // Cargar stream en player
+        async function loadStream(proxyUrl) {
+            hideError();
+            console.log('[Player] Cargando:', proxyUrl);
+            setStatus('loading', 'Cargando stream...');
+            
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            
+            try {
+                if (Hls.isSupported()) {
+                    console.log('[Player] Usando HLS.js');
+
+                    hls = new Hls({
+                        enableWorker: false,
+                        lowLatencyMode: true,
+                        debug: false,
+                        xhrSetup: function(xhr, url) {
+                            xhr.withCredentials = false;
+                        }
+                    });
+
+                    hls.loadSource(proxyUrl);
+                    hls.attachMedia(video);
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
+                        console.log('[Player] Manifest cargado, calidades:', data.levels.length);
+                        video.play().catch(e => {
+                            console.log('[Player] Autoplay bloqueado:', e.message);
+                        });
+                        setStatus('live', 'EN VIVO');
+                    });
+                    
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        console.error('[Player] HLS Error:', data.type, data.details);
+                        if (data.fatal) {
+                            switch(data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.log('[Player] Error de red, reintentando...');
+                                    showError('Error de conexión, reintentando...');
+                                    setTimeout(() => hls.startLoad(), 2000);
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.log('[Player] Error de media, recuperando...');
+                                    hls.recoverMediaError();
+                                    break;
+                                default:
+                                    console.error('[Player] Error fatal:', data);
+                                    showError('Error al reproducir: ' + data.details);
+                                    setStatus('error', 'Error');
+                                    break;
+                            }
+                        }
+                    });
+                    
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    console.log('[Player] Usando HLS nativo');
+                    video.src = proxyUrl;
+                    video.addEventListener('loadedmetadata', () => {
+                        video.play();
+                        setStatus('live', 'EN VIVO');
+                    });
+                    video.addEventListener('error', (e) => {
+                        console.error('[Player] Error nativo:', e);
+                        showError('Error al cargar el stream');
+                    });
+                } else {
+                    throw new Error('Tu navegador no soporta reproducción HLS');
+                }
+            } catch (e) {
+                console.error('[Player] Error:', e);
+                showError('Error: ' + e.message);
+            }
+        }
+
+        // Volver a grilla
+        function showGrid() {
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            video.pause();
+            video.src = '';
+            
+            document.getElementById('playerSection').classList.remove('active');
+            document.getElementById('gridSection').style.display = 'block';
+            currentChannel = null;
+        }
+
+        // Recargar stream actual
+        function reloadStream() {
+            if (currentChannel) {
+                loadStream(BASE_URL + currentChannel.proxyUrl);
+            }
+        }
+
+        // Cambiar canal (anterior/siguiente) - con indicador TV
+        function changeChannel(direction) {
+            if (!currentChannel || channels.length === 0) return;
+            
+            const currentIndex = channels.findIndex(c => c.id === currentChannel.id);
+            let newIndex = currentIndex + direction;
+            
+            // Wrap around
+            if (newIndex < 0) newIndex = channels.length - 1;
+            if (newIndex >= channels.length) newIndex = 0;
+            
+            const newChannel = channels[newIndex];
+            if (newChannel && newChannel.hasStream) {
+                showChannelIndicator(newChannel.name);
+                playChannel(newChannel.id);
+            }
+        }
+        
+        // Mostrar indicador de canal en pantalla (para TV)
+        function showChannelIndicator(name) {
+            const indicator = document.getElementById('channelIndicator');
+            if (indicator) {
+                indicator.textContent = name + ' - EN VIVO';
+                indicator.classList.add('show');
+                setTimeout(() => indicator.classList.remove('show'), 3000);
+            }
+        }
+        
+        function nextChannel() {
+            changeChannel(1);
+        }
+        
+        function prevChannel() {
+            changeChannel(-1);
+        }
+        
+        // Fullscreen toggle
+        function toggleFullscreen() {
+            const wrapper = document.getElementById('playerWrapper');
+            if (!document.fullscreenElement) {
+                wrapper.requestFullscreen().catch(e => console.log('Fullscreen error:', e));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Teclas de navegación optimizadas para TV / control remoto
+        document.addEventListener('keydown', function(e) {
+            const playerActive = document.getElementById('playerSection').classList.contains('active');
+            
+            // En la grilla: Enter/OK selecciona canal, flechas navegan
+            if (!playerActive) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    // Seleccionar primer canal disponible si no hay selección
+                    const firstAvailable = channels.find(c => c.hasStream);
+                    if (firstAvailable) playChannel(firstAvailable.id);
+                }
+                return;
+            }
+            
+            // En el player: controles de TV
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'Backspace':
+                case 'Escape':
+                    e.preventDefault();
+                    showGrid();
+                    break;
+                case 'ArrowUp':
+                case 'PageUp':
+                    e.preventDefault();
+                    prevChannel();
+                    break;
+                case 'ArrowDown':
+                case 'PageDown':
+                    e.preventDefault();
+                    nextChannel();
+                    break;
+                case 'f':
+                case 'F':
+                case 'Enter':  // OK en muchos controles remoto
+                    e.preventDefault();
+                    toggleFullscreen();
+                    break;
+                case ' ':  // Play/Pause
+                    e.preventDefault();
+                    if (video.paused) video.play(); else video.pause();
+                    break;
+            }
+        });
+
+        // Helpers
+        function setStatus(state, text) {
+            const el = document.getElementById('playerStatus');
+            el.className = 'status ' + state;
+            el.textContent = text;
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setStatus('error', 'Error');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Iniciar cuando DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[App] Iniciando FamiliTV...');
+            
+            // Event listeners para botones de navegación
+            const navPrev = document.getElementById('navPrev');
+            const navNext = document.getElementById('navNext');
+            
+            if (navPrev) {
+                navPrev.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[Nav] Click anterior');
+                    prevChannel();
+                });
+            }
+            
+            if (navNext) {
+                navNext.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[Nav] Click siguiente');
+                    nextChannel();
+                });
+            }
+            
+            // Doble click en video = fullscreen
+            video.addEventListener('dblclick', toggleFullscreen);
+            
+            // Cargar canales
+            loadChannels();
+        });
     </script>
 </body>
 </html>
