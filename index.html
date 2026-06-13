@@ -362,7 +362,11 @@
         let channels = [];
         let currentChannel = null;
         let hls = null;
+        let latencyCheckInterval = null;
         const video = document.getElementById('video');
+        const LATENCY_CATCHUP_THRESHOLD_S = 15; // empezar a acelerar si >= 15s atras
+        const LATENCY_NORMAL_THRESHOLD_S = 5;   // volver a 1.0x si <= 5s atras
+        const CATCHUP_PLAYBACK_RATE = 1.25;
 
         // BASE_URL puede venir de config.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
@@ -446,7 +450,8 @@
             hideError();
             console.log('[Player] Cargando:', proxyUrl);
             setStatus('loading', 'Cargando stream...');
-            
+
+            stopLatencyCatchUp();
             if (hls) {
                 hls.destroy();
                 hls = null;
@@ -458,17 +463,18 @@
 
                     hls = new Hls({
                         enableWorker: false,
-                        lowLatencyMode: false,
+                        lowLatencyMode: true,
                         debug: false,
                         capLevelToPlayerSize: true,
-                        startLevel: -1,
-                        abrEwmaDefaultEstimate: 500000,
+                        startLevel: 0,
+                        abrEwmaDefaultEstimate: 200000,
                         abrBandWidthFactor: 0.95,
                         abrBandWidthUpFactor: 0.7,
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 60,
-                        liveSyncDurationCount: 3,
-                        liveMaxLatencyDurationCount: 10,
+                        maxBufferLength: 8,
+                        maxMaxBufferLength: 15,
+                        backBufferLength: 0,
+                        liveSyncDurationCount: 1,
+                        liveMaxLatencyDurationCount: 3,
                         fragLoadPolicy: {
                             default: {
                                 maxTimeToFirstByteMs: 10000,
@@ -515,6 +521,7 @@
                             console.log('[Player] Autoplay bloqueado:', e.message);
                         });
                         setStatus('live', 'EN VIVO');
+                        startLatencyCatchUp();
                     });
                     
                     hls.on(Hls.Events.ERROR, (event, data) => {
@@ -575,8 +582,36 @@
             }
         }
 
+        // Control de latencia en vivo: acelerar reproduccion si nos alejamos del borde
+        function startLatencyCatchUp() {
+            stopLatencyCatchUp();
+            latencyCheckInterval = setInterval(() => {
+                if (!hls || !video || video.paused || video.seekable.length === 0) return;
+
+                const liveEdge = video.seekable.end(video.seekable.length - 1);
+                const latency = liveEdge - video.currentTime;
+
+                if (latency >= LATENCY_CATCHUP_THRESHOLD_S && video.playbackRate !== CATCHUP_PLAYBACK_RATE) {
+                    console.log(`[Latency] ${latency.toFixed(1)}s atras → acelerando a ${CATCHUP_PLAYBACK_RATE}x`);
+                    video.playbackRate = CATCHUP_PLAYBACK_RATE;
+                } else if (latency <= LATENCY_NORMAL_THRESHOLD_S && video.playbackRate !== 1.0) {
+                    console.log(`[Latency] ${latency.toFixed(1)}s atras → velocidad normal`);
+                    video.playbackRate = 1.0;
+                }
+            }, 2000);
+        }
+
+        function stopLatencyCatchUp() {
+            if (latencyCheckInterval) {
+                clearInterval(latencyCheckInterval);
+                latencyCheckInterval = null;
+            }
+            if (video) video.playbackRate = 1.0;
+        }
+
         // Volver a grilla
         function showGrid() {
+            stopLatencyCatchUp();
             if (hls) {
                 hls.destroy();
                 hls = null;
@@ -592,7 +627,7 @@
         // Recargar stream actual
         function reloadStream() {
             if (currentChannel) {
-                loadStream(currentChannel.proxyUrl);
+                loadStream(proxyUrl(currentChannel.proxyUrl));
             }
         }
 
