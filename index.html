@@ -564,7 +564,7 @@
                                 case Hls.ErrorTypes.NETWORK_ERROR:
                                     console.log('[Player] Error de red fatal, reintentando...');
                                     showError('Red inestable, esperando conexión...');
-                                    reloadPending = true;
+                                    reconnectPending = true;
                                     // Forzar nivel mas bajo si hay disponibles
                                     if (hls.levels && hls.levels.length > 1) {
                                         hls.currentLevel = 0;
@@ -870,41 +870,66 @@
                     setTimeout(() => el.classList.remove('active'), 300);
                 }
             }
-            
-            // Cargar canales
-            loadChannels();
 
-            // Recarga automatica cuando vuelve la conexion (tipo juego del dino de Chrome)
-            let reloadPending = false;
+            // Reconexion en caliente: intenta reconectar el canal actual sin recargar la pagina
+            // Asi no se sale de pantalla completa en la TV
+            async function reconnectStream() {
+                if (!currentChannel) return;
+                console.log('[Reconnect] Intentando reconectar canal:', currentChannel.id);
+                showError('Reconectando...');
+
+                // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
+                try {
+                    const res = await fetch('config.js?t=' + Date.now(), { cache: 'no-store' });
+                    const text = await res.text();
+                    const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
+                    if (match && match[1]) {
+                        window.FAMILITV.BASE_URL = match[1];
+                        console.log('[Reconnect] BASE_URL actualizado:', match[1]);
+                    }
+                } catch (e) {
+                    console.log('[Reconnect] No se pudo refrescar config.js:', e.message);
+                }
+
+                // Recargar el stream del canal actual
+                loadStream(proxyUrl(currentChannel.proxyUrl));
+            }
+
+            // Detectar corte/restauracion de red y reconectar sin salir de fullscreen
+            let reconnectPending = false;
             window.addEventListener('offline', () => {
                 console.log('[Network] Sin conexion');
                 showError('Sin conexión. Esperando red...');
-                reloadPending = true;
+                reconnectPending = true;
             });
             window.addEventListener('online', () => {
                 console.log('[Network] Conexion recuperada');
-                if (reloadPending) {
-                    showError('Conexión recuperada. Recargando...');
-                    setTimeout(() => location.reload(), 3000);
+                if (reconnectPending) {
+                    reconnectPending = false;
+                    reconnectStream();
                 }
             });
 
-            // Heartbeat: si el backend no responde, marcar offline y recargar al volver
+            // Heartbeat: si el backend vuelve y habia un corte, reconectar en caliente
             setInterval(async () => {
                 try {
                     const res = await fetch(apiUrl('/api/status'), { cache: 'no-store' });
                     if (!res.ok) throw new Error('status ' + res.status);
-                    if (reloadPending) {
-                        reloadPending = false;
-                        console.log('[Heartbeat] Backend disponible. Recargando...');
-                        showError('Conexión recuperada. Recargando...');
-                        setTimeout(() => location.reload(), 3000);
+                    if (reconnectPending) {
+                        reconnectPending = false;
+                        console.log('[Heartbeat] Backend disponible. Reconectando...');
+                        reconnectStream();
                     }
                 } catch (e) {
                     console.log('[Heartbeat] Backend no responde:', e.message);
-                    reloadPending = true;
+                    reconnectPending = true;
                 }
             }, 15000);
+            
+            // Cargar canales
+            loadChannels();
+
+
         });
     </script>
 </body>
