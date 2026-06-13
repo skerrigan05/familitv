@@ -563,7 +563,8 @@
                             switch(data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
                                     console.log('[Player] Error de red fatal, reintentando...');
-                                    showError('Red inestable, reintentando...');
+                                    showError('Red inestable, esperando conexión...');
+                                    reloadPending = true;
                                     // Forzar nivel mas bajo si hay disponibles
                                     if (hls.levels && hls.levels.length > 1) {
                                         hls.currentLevel = 0;
@@ -872,6 +873,38 @@
             
             // Cargar canales
             loadChannels();
+
+            // Recarga automatica cuando vuelve la conexion (tipo juego del dino de Chrome)
+            let reloadPending = false;
+            window.addEventListener('offline', () => {
+                console.log('[Network] Sin conexion');
+                showError('Sin conexión. Esperando red...');
+                reloadPending = true;
+            });
+            window.addEventListener('online', () => {
+                console.log('[Network] Conexion recuperada');
+                if (reloadPending) {
+                    showError('Conexión recuperada. Recargando...');
+                    setTimeout(() => location.reload(), 3000);
+                }
+            });
+
+            // Heartbeat: si el backend no responde, marcar offline y recargar al volver
+            setInterval(async () => {
+                try {
+                    const res = await fetch(apiUrl('/api/status'), { cache: 'no-store' });
+                    if (!res.ok) throw new Error('status ' + res.status);
+                    if (reloadPending) {
+                        reloadPending = false;
+                        console.log('[Heartbeat] Backend disponible. Recargando...');
+                        showError('Conexión recuperada. Recargando...');
+                        setTimeout(() => location.reload(), 3000);
+                    }
+                } catch (e) {
+                    console.log('[Heartbeat] Backend no responde:', e.message);
+                    reloadPending = true;
+                }
+            }, 15000);
         });
     </script>
 </body>
