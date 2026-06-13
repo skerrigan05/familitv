@@ -293,15 +293,18 @@
         .channel-nav-center {
             left: 25%;
             width: 50%;
-            opacity: 0;
+            opacity: 0.01;
             cursor: pointer;
-            outline: none;
+            outline: 2px solid rgba(255,255,255,0.0);
+            background: transparent;
+            pointer-events: auto;
         }
 
         .channel-nav-center:focus,
         .channel-nav-center:hover {
-            opacity: 0.05;
-            background: rgba(255,255,255,0.05);
+            opacity: 0.2;
+            background: rgba(255,255,255,0.15);
+            outline: 2px solid rgba(255,255,255,0.4);
         }
 
         /* En fullscreen, mas visibles y anchos para control remoto */
@@ -359,7 +362,7 @@
             <!-- Botones transparentes para cambiar canal (fullscreen) -->
             <div class="channel-nav channel-nav-prev" id="navPrev" title="Canal anterior" tabindex="0">&#10094;</div>
             <!-- Boton central transparente para fullscreen -->
-            <div class="channel-nav channel-nav-center" id="navCenter" title="Pantalla completa" tabindex="0"></div>
+            <div class="channel-nav channel-nav-center" id="navCenter" title="Pantalla completa" tabindex="0" role="button" aria-label="Pantalla completa">&nbsp;</div>
             <div class="channel-nav channel-nav-next" id="navNext" title="Canal siguiente" tabindex="0">&#10095;</div>
         </div>
         
@@ -819,14 +822,16 @@
             const navCenter = document.getElementById('navCenter');
             if (navCenter) {
                 const goFullscreen = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    if (e && e.preventDefault) e.preventDefault();
+                    if (e && e.stopPropagation) e.stopPropagation();
                     console.log('[Nav] Fullscreen desde boton central');
                     toggleFullscreen();
                 };
                 navCenter.addEventListener('click', goFullscreen);
+                navCenter.addEventListener('pointerup', goFullscreen);
+                navCenter.addEventListener('touchend', goFullscreen);
                 navCenter.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') goFullscreen(e);
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'OK') goFullscreen(e);
                 });
             }
             
@@ -847,7 +852,7 @@
                     const width = rect.width;
                     if (width === 0) return;
                     
-                    // Zona izquierda 40% = anterior, derecha 40% = siguiente, centro 20% = nada
+                    // Zona izquierda 40% = anterior, derecha 40% = siguiente, centro 20% = fullscreen
                     if (x < width * 0.4) {
                         console.log('[TV Input] Zona izquierda - canal anterior');
                         highlightNav('navPrev');
@@ -856,6 +861,9 @@
                         console.log('[TV Input] Zona derecha - canal siguiente');
                         highlightNav('navNext');
                         nextChannel();
+                    } else {
+                        console.log('[TV Input] Zona centro - fullscreen');
+                        toggleFullscreen();
                     }
                 }
                 playerWrapper.addEventListener('click', handleZoneInput);
