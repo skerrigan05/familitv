@@ -265,7 +265,7 @@
             outline: none;
         }
 
-        .player-wrapper:hover .channel-nav,
+        .player-wrapper:hover .channel-nav:not(.channel-nav-center),
         .channel-nav:focus {
             opacity: 0.7;
         }
@@ -289,6 +289,21 @@
             justify-content: flex-end;
         }
 
+        /* Boton central transparente para fullscreen en modo normal */
+        .channel-nav-center {
+            left: 25%;
+            width: 50%;
+            opacity: 0;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .channel-nav-center:focus,
+        .channel-nav-center:hover {
+            opacity: 0.05;
+            background: rgba(255,255,255,0.05);
+        }
+
         /* En fullscreen, mas visibles y anchos para control remoto */
         .player-wrapper:fullscreen .channel-nav,
         .player-wrapper:-webkit-full-screen .channel-nav {
@@ -297,6 +312,18 @@
             top: 50px;
             width: 30%;
             font-size: 4rem;
+        }
+
+        .player-wrapper:fullscreen .channel-nav-center,
+        .player-wrapper:-webkit-full-screen .channel-nav-center {
+            left: 30%;
+            width: 40%;
+            opacity: 0;
+        }
+
+        .player-wrapper:fullscreen .channel-nav-center:focus,
+        .player-wrapper:-webkit-full-screen .channel-nav-center:focus {
+            opacity: 0.05;
         }
 
         .player-wrapper:fullscreen .channel-nav:focus,
@@ -338,6 +365,8 @@
             <div class="tv-channel-indicator" id="channelIndicator"></div>
             <!-- Botones transparentes para cambiar canal (fullscreen) -->
             <div class="channel-nav channel-nav-prev" id="navPrev" title="Canal anterior" tabindex="0">&#10094;</div>
+            <!-- Boton central transparente para fullscreen -->
+            <div class="channel-nav channel-nav-center" id="navCenter" title="Pantalla completa" tabindex="0"></div>
             <div class="channel-nav channel-nav-next" id="navNext" title="Canal siguiente" tabindex="0">&#10095;</div>
         </div>
         
@@ -789,6 +818,21 @@
                 navNext.addEventListener('click', goNext);
                 navNext.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' || e.key === ' ') goNext(e);
+                });
+            }
+
+            // Boton central transparente → fullscreen
+            const navCenter = document.getElementById('navCenter');
+            if (navCenter) {
+                const goFullscreen = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[Nav] Fullscreen desde boton central');
+                    toggleFullscreen();
+                };
+                navCenter.addEventListener('click', goFullscreen);
+                navCenter.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') goFullscreen(e);
                 });
             }
             
