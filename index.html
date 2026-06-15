@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781540079979.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781540079979.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -42,7 +42,6 @@
             max-width: 1000px;
             margin: 30px auto;
             padding: 0 20px;
-            display: none;
         }
         
         .grid-title {
@@ -128,105 +127,6 @@
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
-        }
-        
-        /* Login */
-        .login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            z-index: 2000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        
-        .login-box {
-            width: 100%;
-            max-width: 460px;
-            background: rgba(0,0,0,0.35);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px;
-            padding: 32px;
-            text-align: center;
-        }
-        
-        .login-box h1 {
-            font-size: 2rem;
-            margin-bottom: 6px;
-        }
-        
-        .login-box p {
-            color: #aaa;
-            margin-bottom: 24px;
-            font-size: 0.95rem;
-        }
-        
-        .login-box input {
-            width: 100%;
-            padding: 14px;
-            margin-bottom: 14px;
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.07);
-            color: white;
-            font-size: 1rem;
-            outline: none;
-        }
-        
-        .login-box input:focus {
-            border-color: #e30613;
-        }
-        
-        .terms-box {
-            max-height: 180px;
-            overflow-y: auto;
-            background: rgba(0,0,0,0.25);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 16px;
-            text-align: left;
-            font-size: 0.82rem;
-            line-height: 1.45;
-            color: #ccc;
-            margin-bottom: 14px;
-        }
-        
-        .terms-box::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .terms-box::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
-        }
-        
-        .terms-label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-            color: #ddd;
-            cursor: pointer;
-        }
-        
-        .terms-label input {
-            width: auto;
-            margin: 0;
-            cursor: pointer;
-        }
-        
-        .login-error {
-            color: #ff6b6b;
-            margin-top: 12px;
-            font-size: 0.9rem;
-            min-height: 1.2em;
         }
         
         /* Player */
@@ -325,11 +225,6 @@
             background: #c00510;
         }
         
-        .btn-primary:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-        
         .btn-secondary {
             background: #333;
             color: white;
@@ -346,42 +241,6 @@
             border-radius: 8px;
             margin-top: 10px;
             display: none;
-        }
-        
-        /* Access denied overlay */
-        .access-denied-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 3000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        
-        .access-denied-box {
-            max-width: 480px;
-            background: #1a1a2e;
-            border: 2px solid #e30613;
-            border-radius: 16px;
-            padding: 32px;
-            text-align: center;
-        }
-        
-        .access-denied-box h2 {
-            font-size: 1.5rem;
-            margin-bottom: 16px;
-            color: #ff6b6b;
-        }
-        
-        .access-denied-box p {
-            color: #ccc;
-            margin-bottom: 24px;
-            line-height: 1.5;
         }
         
         /* Botones de navegación transparentes - no tapar controles del video */
@@ -470,46 +329,12 @@
             opacity: 0.95;
         }
         
-        /* Ocultar boton cambiar usuario en fullscreen */
-        .player-wrapper:fullscreen ~ .player-controls #btnChangeUser,
-        .player-wrapper:-webkit-full-screen ~ .player-controls #btnChangeUser {
-            display: none;
-        }
-        
-        /* Indicador de canal para TV */
-        .tv-channel-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            z-index: 20;
-        }
-        
-        .tv-channel-indicator.show {
-            opacity: 1;
-        }
-        
         @media (max-width: 600px) {
             .channel-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
             .header h1 {
                 font-size: 1.5rem;
-            }
-            .login-box {
-                padding: 24px;
-            }
-            .player-controls {
-                flex-direction: column;
-                align-items: flex-start;
             }
         }
     </style>
@@ -518,26 +343,6 @@
     <div class="header">
         <h1>FamiliTV</h1>
         <p>Canales de televisión chilenos en vivo</p>
-    </div>
-
-    <!-- Login -->
-    <div class="login-overlay" id="loginOverlay">
-        <div class="login-box">
-            <h1>FamiliTV</h1>
-            <p>Ingresa tus credenciales para continuar</p>
-            <input type="text" id="loginUser" placeholder="Usuario" autocomplete="username">
-            <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
-            <div class="terms-box" id="termsBox">
-                <p>Esta aplicacion es de uso EXCLUSIVAMENTE PRIVADO Y PERSONAL. El proposito es unicamente educativo y de estudio tecnico. No tiene fines comerciales ni de lucro. Los contenidos accesibles provienen de fuentes publicas disponibles en internet.</p>
-                <p>Cada usuario es responsable del uso que haga de esta herramienta. El creador no se hace responsable del uso indebido, malinterpretacion o violacion de leyes locales. Al ingresar, el usuario declara que usara esta app solo para fines personales y de estudio.</p>
-            </div>
-            <label class="terms-label">
-                <input type="checkbox" id="termsCheck">
-                Acepto los términos y condiciones
-            </label>
-            <button class="btn btn-primary" id="loginBtn" disabled>Ingresar</button>
-            <div class="login-error" id="loginError"></div>
-        </div>
     </div>
 
     <!-- Grid de canales -->
@@ -572,20 +377,10 @@
             <div>
                 <button class="btn btn-secondary" onclick="showGrid()">← Volver</button>
                 <button class="btn btn-primary" onclick="reloadStream()">Recargar</button>
-                <button class="btn btn-secondary" id="btnChangeUser" onclick="changeUser()">Cambiar usuario</button>
             </div>
         </div>
         
         <div id="errorMessage" class="error-message"></div>
-    </div>
-
-    <!-- Acceso suspendido -->
-    <div class="access-denied-overlay" id="accessDeniedOverlay">
-        <div class="access-denied-box">
-            <h2>🔒 ACCESO SUSPENDIDO</h2>
-            <p>Este usuario ha sido bloqueado por seguridad. Contacta al administrador para desbloquear.</p>
-            <button class="btn btn-primary" onclick="backToLogin()">Volver a login</button>
-        </div>
     </div>
 
     <script>
@@ -597,149 +392,15 @@
         const LATENCY_CATCHUP_THRESHOLD_S = 15; // empezar a acelerar si >= 15s atras
         const LATENCY_NORMAL_THRESHOLD_S = 5;   // volver a 1.0x si <= 5s atras
         const CATCHUP_PLAYBACK_RATE = 1.25;
-        const TOKEN_KEY = 'familitv_token';
-        let accessDeniedShown = false;
 
-        // BASE_URL puede venir de config.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781540079979.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
         function apiUrl(path) { return BASE + path; }
         function proxyUrl(url) { return BASE + url; }
 
-        function getToken() { return localStorage.getItem(TOKEN_KEY); }
-        function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
-        function clearToken() { localStorage.removeItem(TOKEN_KEY); }
-
-        function showLogin() {
-            document.getElementById('loginOverlay').style.display = 'flex';
-            document.getElementById('gridSection').style.display = 'none';
-            document.getElementById('playerSection').classList.remove('active');
-            hideAccessDenied();
-        }
-
-        function showApp() {
-            document.getElementById('loginOverlay').style.display = 'none';
-            document.getElementById('gridSection').style.display = 'block';
-            hideAccessDenied();
-        }
-
-        async function checkSession() {
-            const token = getToken();
-            if (!token) {
-                showLogin();
-                return;
-            }
-            try {
-                const res = await fetch(apiUrl('/api/session?token=' + encodeURIComponent(token)), { cache: 'no-store' });
-                const data = await res.json();
-                if (data.valid) {
-                    showApp();
-                    loadChannels();
-                } else {
-                    clearToken();
-                    showLogin();
-                }
-            } catch (e) {
-                console.error('[Auth] Error validando sesion:', e);
-                showLogin();
-            }
-        }
-
-        async function loadTerms() {
-            try {
-                const res = await fetch(apiUrl('/api/terms'), { cache: 'no-store' });
-                const data = await res.json();
-                const box = document.getElementById('termsBox');
-                if (box && data.text) {
-                    box.innerHTML = data.text.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
-                }
-            } catch (e) {
-                console.error('[Terms] No se pudieron cargar los terminos:', e);
-            }
-        }
-
-        async function doLogin() {
-            const username = document.getElementById('loginUser').value.trim();
-            const password = document.getElementById('loginPass').value;
-            const errorEl = document.getElementById('loginError');
-            const btn = document.getElementById('loginBtn');
-            errorEl.textContent = '';
-            btn.disabled = true;
-            try {
-                const res = await fetch(apiUrl('/api/login'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setToken(data.token);
-                    document.getElementById('loginUser').value = '';
-                    document.getElementById('loginPass').value = '';
-                    document.getElementById('termsCheck').checked = false;
-                    btn.disabled = true;
-                    showApp();
-                    loadChannels();
-                } else {
-                    errorEl.textContent = data.message || 'Error de autenticacion';
-                    btn.disabled = false;
-                }
-            } catch (e) {
-                console.error('[Auth] Login error:', e);
-                errorEl.textContent = 'No se pudo conectar con el servidor';
-                btn.disabled = false;
-            }
-        }
-
-        async function changeUser() {
-            const token = getToken();
-            if (token) {
-                try {
-                    await fetch(apiUrl('/api/logout'), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token })
-                    });
-                } catch (e) {
-                    console.error('[Auth] Logout error:', e);
-                }
-            }
-            stopPlayer();
-            clearToken();
-            accessDeniedShown = false;
-            currentChannel = null;
-            showLogin();
-        }
-
-        function backToLogin() {
-            changeUser();
-        }
-
-        function stopPlayer() {
-            stopLatencyCatchUp();
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-            video.pause();
-            video.src = '';
-        }
-
-        function showAccessDenied() {
-            if (accessDeniedShown) return;
-            accessDeniedShown = true;
-            stopPlayer();
-            document.getElementById('gridSection').style.display = 'none';
-            document.getElementById('playerSection').classList.remove('active');
-            document.getElementById('accessDeniedOverlay').style.display = 'flex';
-        }
-
-        function hideAccessDenied() {
-            document.getElementById('accessDeniedOverlay').style.display = 'none';
-        }
-
-        // Cargar canales al iniciar sesion - AUTO-PLAY CHV (Chilevision) por defecto
+        // Cargar canales al iniciar - AUTO-PLAY CHV (Chilevisión) por defecto
         async function loadChannels() {
             try {
                 const res = await fetch(apiUrl('/api/channels'));
@@ -790,7 +451,6 @@
             if (!channel || !channel.hasStream) return;
             
             currentChannel = channel;
-            accessDeniedShown = false;
             
             // Mostrar indicador de canal
             showChannelIndicator(channel.name);
@@ -874,13 +534,6 @@
                         },
                         xhrSetup: function(xhr, url) {
                             xhr.withCredentials = false;
-                            const token = getToken();
-                            if (token) xhr.setRequestHeader('x-session-token', token);
-                            xhr.addEventListener('loadend', function() {
-                                if (xhr.status === 401 || xhr.status === 403) {
-                                    showAccessDenied();
-                                }
-                            });
                         }
                     });
 
@@ -1135,30 +788,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('[App] Iniciando FamiliTV...');
             
-            // Login UI
-            const termsCheck = document.getElementById('termsCheck');
-            const loginBtn = document.getElementById('loginBtn');
-            if (termsCheck && loginBtn) {
-                termsCheck.addEventListener('change', () => {
-                    loginBtn.disabled = !termsCheck.checked;
-                });
-            }
-            if (loginBtn) {
-                loginBtn.addEventListener('click', doLogin);
-            }
-            const loginUser = document.getElementById('loginUser');
-            const loginPass = document.getElementById('loginPass');
-            if (loginUser) {
-                loginUser.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') loginPass && loginPass.focus();
-                });
-            }
-            if (loginPass) {
-                loginPass.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') doLogin();
-                });
-            }
-            
             // Event listeners para botones de navegación
             const navPrev = document.getElementById('navPrev');
             const navNext = document.getElementById('navNext');
@@ -1259,7 +888,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781540079979.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1267,7 +896,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781540079979.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
@@ -1305,11 +934,10 @@
                 }
             }, 15000);
             
-            // Cargar términos de uso persistidos
-            loadTerms();
+            // Cargar canales
+            loadChannels();
 
-            // Validar sesión existente o mostrar login
-            checkSession();
+
         });
     </script>
 </body>
