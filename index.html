@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781542183362.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781542199714.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781542183362.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781542199714.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -598,9 +598,10 @@
         const LATENCY_NORMAL_THRESHOLD_S = 5;   // volver a 1.0x si <= 5s atras
         const CATCHUP_PLAYBACK_RATE = 1.25;
         const TOKEN_KEY = 'familitv_token';
+        const DEVICE_TOKEN_KEY = 'familitv_device_token';
         let accessDeniedShown = false;
 
-        // BASE_URL puede venir de config.1781542183362.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781542199714.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -610,6 +611,10 @@
         function getToken() { return localStorage.getItem(TOKEN_KEY); }
         function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
         function clearToken() { localStorage.removeItem(TOKEN_KEY); }
+
+        function getDeviceToken() { return localStorage.getItem(DEVICE_TOKEN_KEY); }
+        function setDeviceToken(t) { localStorage.setItem(DEVICE_TOKEN_KEY, t); }
+        function clearDeviceToken() { localStorage.removeItem(DEVICE_TOKEN_KEY); }
 
         function showLogin() {
             document.getElementById('loginOverlay').style.display = 'flex';
@@ -626,24 +631,44 @@
 
         async function checkSession() {
             const token = getToken();
-            if (!token) {
-                showLogin();
-                return;
-            }
-            try {
-                const res = await fetch(apiUrl('/api/session?token=' + encodeURIComponent(token)), { cache: 'no-store' });
-                const data = await res.json();
-                if (data.valid) {
-                    showApp();
-                    loadChannels();
-                } else {
+            if (token) {
+                try {
+                    const res = await fetch(apiUrl('/api/session?token=' + encodeURIComponent(token)), { cache: 'no-store' });
+                    const data = await res.json();
+                    if (data.valid) {
+                        showApp();
+                        loadChannels();
+                        return;
+                    }
                     clearToken();
-                    showLogin();
+                } catch (e) {
+                    console.error('[Auth] Error validando sesion:', e);
                 }
-            } catch (e) {
-                console.error('[Auth] Error validando sesion:', e);
-                showLogin();
             }
+
+            // Intentar auto-login con device token (TVs/navegadores persistentes)
+            const deviceToken = getDeviceToken();
+            if (deviceToken) {
+                try {
+                    const res = await fetch(apiUrl('/api/device-login'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ deviceToken })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        setToken(data.token);
+                        showApp();
+                        loadChannels();
+                        return;
+                    }
+                    clearDeviceToken();
+                } catch (e) {
+                    console.error('[Auth] Error en device-login:', e);
+                }
+            }
+
+            showLogin();
         }
 
         async function loadTerms() {
@@ -675,6 +700,7 @@
                 const data = await res.json();
                 if (data.success) {
                     setToken(data.token);
+                    if (data.deviceToken) setDeviceToken(data.deviceToken);
                     document.getElementById('loginUser').value = '';
                     document.getElementById('loginPass').value = '';
                     document.getElementById('termsCheck').checked = false;
@@ -707,6 +733,7 @@
             }
             stopPlayer();
             clearToken();
+            clearDeviceToken();
             accessDeniedShown = false;
             currentChannel = null;
             showLogin();
@@ -1259,7 +1286,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781542183362.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781542199714.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1267,7 +1294,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781542183362.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781542199714.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
