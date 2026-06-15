@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781542199714.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781544085624.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781542199714.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781544085624.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -396,7 +396,7 @@
             cursor: pointer;
             opacity: 0.25;      /* siempre visibles para TV/control remoto */
             transition: opacity 0.3s, background 0.3s;
-            z-index: 10;        /* por debajo de los controles nativos del video */
+            z-index: 100;       /* por encima del video para Smart TV */
             font-size: 3rem;
             color: rgba(255,255,255,0.95);
             text-shadow: 0 2px 15px rgba(0,0,0,0.9);
@@ -601,7 +601,7 @@
         const DEVICE_TOKEN_KEY = 'familitv_device_token';
         let accessDeniedShown = false;
 
-        // BASE_URL puede venir de config.1781542199714.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781544085624.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -1031,21 +1031,29 @@
             }
         }
 
-        // Cambiar canal (anterior/siguiente) - con indicador TV
+        // Cambiar canal (anterior/siguiente) - salta canales sin stream
         function changeChannel(direction) {
             if (!currentChannel || channels.length === 0) return;
-            
+
             const currentIndex = channels.findIndex(c => c.id === currentChannel.id);
-            let newIndex = currentIndex + direction;
-            
-            // Wrap around
-            if (newIndex < 0) newIndex = channels.length - 1;
-            if (newIndex >= channels.length) newIndex = 0;
-            
-            const newChannel = channels[newIndex];
-            if (newChannel && newChannel.hasStream) {
-                showChannelIndicator(newChannel.name);
-                playChannel(newChannel.id);
+            if (currentIndex < 0) return;
+
+            const total = channels.length;
+            let newIndex = currentIndex;
+            let attempts = 0;
+            let nextChannel = null;
+
+            // Buscar el siguiente canal con stream, dando toda la vuelta si es necesario
+            do {
+                attempts++;
+                newIndex = (newIndex + direction + total) % total;
+                nextChannel = channels[newIndex];
+                if (nextChannel && nextChannel.hasStream) break;
+            } while (attempts < total);
+
+            if (nextChannel && nextChannel.hasStream && nextChannel.id !== currentChannel.id) {
+                showChannelIndicator(nextChannel.name);
+                playChannel(nextChannel.id);
             }
         }
         
@@ -1096,12 +1104,11 @@
             switch(e.key) {
                 case 'ArrowLeft':
                     e.preventDefault();
-                    if (isFullscreen) { prevChannel(); }
-                    else { showGrid(); }
+                    prevChannel(); // flecha izquierda siempre canal anterior
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    if (isFullscreen) { nextChannel(); }
+                    nextChannel(); // flecha derecha siempre canal siguiente
                     break;
                 case 'ArrowUp':
                 case 'PageUp':
@@ -1192,27 +1199,31 @@
             
             if (navPrev) {
                 const goPrev = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    if (e && e.preventDefault) e.preventDefault();
+                    if (e && e.stopPropagation) e.stopPropagation();
                     console.log('[Nav] Anterior');
                     prevChannel();
                 };
                 navPrev.addEventListener('click', goPrev);
+                navPrev.addEventListener('pointerup', goPrev);
+                navPrev.addEventListener('touchend', goPrev);
                 navPrev.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') goPrev(e);
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'OK') goPrev(e);
                 });
             }
-            
+
             if (navNext) {
                 const goNext = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    if (e && e.preventDefault) e.preventDefault();
+                    if (e && e.stopPropagation) e.stopPropagation();
                     console.log('[Nav] Siguiente');
                     nextChannel();
                 };
                 navNext.addEventListener('click', goNext);
+                navNext.addEventListener('pointerup', goNext);
+                navNext.addEventListener('touchend', goNext);
                 navNext.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') goNext(e);
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'OK') goNext(e);
                 });
             }
 
@@ -1286,7 +1297,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781542199714.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781544085624.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1294,7 +1305,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781542199714.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781544085624.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
