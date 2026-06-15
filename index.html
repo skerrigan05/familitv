@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781544665524.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781544806947.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781544665524.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781544806947.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -602,7 +602,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1781544665524.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781544806947.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -616,6 +616,11 @@
         function getDeviceToken() { return localStorage.getItem(DEVICE_TOKEN_KEY); }
         function setDeviceToken(t) { localStorage.setItem(DEVICE_TOKEN_KEY, t); }
         function clearDeviceToken() { localStorage.removeItem(DEVICE_TOKEN_KEY); }
+
+        function isTV() {
+            const ua = navigator.userAgent || '';
+            return /SMART-TV|Tizen|SamsungBrowser|Web0S|CrKey|Roku|AppleTV|HbbTV/i.test(ua);
+        }
 
         function showLogin() {
             document.getElementById('loginOverlay').style.display = 'flex';
@@ -762,16 +767,33 @@
         }
 
         function showAccessDenied() {
-            // Nunca mostramos la pantalla de acceso suspendido en la TV.
-            // Intentamos recuperar la sesión silenciosamente; si no se puede, volvemos al login.
             if (accessDeniedShown) return;
             accessDeniedShown = true;
+
+            // En Smart TV nunca mostramos la pantalla de acceso suspendido;
+            // intentamos recuperar la sesión silenciosamente.
+            if (isTV()) {
+                recoverSession().then(ok => {
+                    accessDeniedShown = false;
+                    if (ok) {
+                        if (currentChannel) reloadStream();
+                    } else {
+                        backToLogin();
+                    }
+                });
+                return;
+            }
+
+            // En otros dispositivos, intentamos recuperar la sesión antes de mostrar la alerta
             recoverSession().then(ok => {
                 if (ok) {
                     accessDeniedShown = false;
                     if (currentChannel) reloadStream();
                 } else {
-                    backToLogin();
+                    stopPlayer();
+                    document.getElementById('gridSection').style.display = 'none';
+                    document.getElementById('playerSection').classList.remove('active');
+                    document.getElementById('accessDeniedOverlay').style.display = 'flex';
                 }
             });
         }
@@ -919,15 +941,8 @@
                             if (token) xhr.setRequestHeader('x-session-token', token);
                             xhr.addEventListener('loadend', function() {
                                 if (xhr.status === 401 || xhr.status === 403) {
-                                    console.log('[HLS] Auth error en segmento, intentando recuperar sesión...');
-                                    recoverSession().then(ok => {
-                                        if (ok && currentChannel) {
-                                            reloadStream();
-                                        } else if (!ok) {
-                                            // Solo como último recurso volvemos a login
-                                            backToLogin();
-                                        }
-                                    });
+                                    console.log('[HLS] Auth error en segmento');
+                                    showAccessDenied();
                                 }
                             });
                         }
@@ -1319,7 +1334,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781544665524.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781544806947.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1327,7 +1342,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781544665524.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781544806947.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
