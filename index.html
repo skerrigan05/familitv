@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781736217577.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781737711797.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781736217577.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781737711797.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -613,7 +613,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1781736217577.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781737711797.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -1347,7 +1347,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781736217577.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781737711797.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1355,7 +1355,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781736217577.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781737711797.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
