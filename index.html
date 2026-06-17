@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781731406963.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781736217577.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781731406963.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781736217577.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -384,7 +384,7 @@
             line-height: 1.5;
         }
         
-        /* Botones de navegación transparentes - no tapar controles del video */
+        /* Botones de navegación transparentes - optimizados para no laggear el video */
         .channel-nav {
             position: absolute;
             top: 50px;          /* dejar espacio arriba */
@@ -394,19 +394,40 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            opacity: 0.25;      /* siempre visibles para TV/control remoto */
-            transition: opacity 0.3s, background 0.3s;
+            opacity: 0;         /* ocultos por defecto en desktop ventana */
             z-index: 100;       /* por encima del video para Smart TV */
             font-size: 3rem;
             color: rgba(255,255,255,0.95);
             text-shadow: 0 2px 15px rgba(0,0,0,0.9);
             user-select: none;
-            pointer-events: auto;
+            pointer-events: none; /* no interceptar mouse en desktop ventana */
             border-radius: 12px;
             outline: none;
+            /* aislar el overlay del video para reducir repaints */
+            will-change: transform;
+            contain: layout paint;
+            transition: none;   /* evitar repaints por transiciones */
         }
 
-        .player-wrapper:hover .channel-nav:not(.channel-nav-center),
+        /* En fullscreen, activar controles */
+        .player-wrapper:fullscreen .channel-nav,
+        .player-wrapper:-webkit-full-screen .channel-nav {
+            opacity: 0.25;
+            pointer-events: auto;
+            bottom: 90px;
+            top: 50px;
+            width: 30%;
+            font-size: 4rem;
+        }
+
+        /* En dispositivos touch/TV (sin hover preciso), activar controles */
+        @media (hover: none), (pointer: coarse) {
+            .channel-nav {
+                opacity: 0.25;
+                pointer-events: auto;
+            }
+        }
+
         .channel-nav:focus {
             opacity: 0.7;
         }
@@ -414,7 +435,7 @@
         .channel-nav:hover,
         .channel-nav:focus-visible,
         .channel-nav.active {
-            opacity: 0.95 !important;
+            opacity: 0.95;
             background: rgba(255,255,255,0.15);
         }
 
@@ -434,11 +455,11 @@
         .channel-nav-center {
             left: 25%;
             width: 50%;
-            opacity: 0.01;
+            opacity: 0;
             cursor: pointer;
             outline: 2px solid rgba(255,255,255,0.0);
             background: transparent;
-            pointer-events: auto;
+            pointer-events: none;
         }
 
         .channel-nav-center:focus,
@@ -446,16 +467,6 @@
             opacity: 0.2;
             background: rgba(255,255,255,0.15);
             outline: 2px solid rgba(255,255,255,0.4);
-        }
-
-        /* En fullscreen, mas visibles y anchos para control remoto */
-        .player-wrapper:fullscreen .channel-nav,
-        .player-wrapper:-webkit-full-screen .channel-nav {
-            opacity: 0.45;
-            bottom: 90px;
-            top: 50px;
-            width: 30%;
-            font-size: 4rem;
         }
 
         .player-wrapper:fullscreen .channel-nav-center,
@@ -596,13 +607,13 @@
         const video = document.getElementById('video');
         const LATENCY_CATCHUP_THRESHOLD_S = 15; // empezar a acelerar si >= 15s atras
         const LATENCY_NORMAL_THRESHOLD_S = 5;   // volver a 1.0x si <= 5s atras
-        const CATCHUP_PLAYBACK_RATE = 1.25;
+        const CATCHUP_PLAYBACK_RATE = 1.1;
         const TOKEN_KEY = 'familitv_token';
         const DEVICE_TOKEN_KEY = 'familitv_device_token';
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1781731406963.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781736217577.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -890,7 +901,7 @@
                     console.log('[Player] Usando HLS.js');
 
                     hls = new Hls({
-                        enableWorker: false,
+                        enableWorker: true,
                         lowLatencyMode: true,
                         debug: false,
                         capLevelToPlayerSize: true,
@@ -898,11 +909,11 @@
                         abrEwmaDefaultEstimate: 200000,
                         abrBandWidthFactor: 0.95,
                         abrBandWidthUpFactor: 0.7,
-                        maxBufferLength: 8,
-                        maxMaxBufferLength: 15,
-                        backBufferLength: 0,
-                        liveSyncDurationCount: 1,
-                        liveMaxLatencyDurationCount: 3,
+                        maxBufferLength: 20,
+                        maxMaxBufferLength: 30,
+                        backBufferLength: 10,
+                        liveSyncDurationCount: 3,
+                        liveMaxLatencyDurationCount: 5,
                         fragLoadPolicy: {
                             default: {
                                 maxTimeToFirstByteMs: 10000,
@@ -1250,8 +1261,6 @@
                     prevChannel();
                 };
                 navPrev.addEventListener('click', goPrev);
-                navPrev.addEventListener('pointerup', goPrev);
-                navPrev.addEventListener('touchend', goPrev);
                 navPrev.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' || e.key === ' ' || e.key === 'OK') goPrev(e);
                 });
@@ -1265,8 +1274,6 @@
                     nextChannel();
                 };
                 navNext.addEventListener('click', goNext);
-                navNext.addEventListener('pointerup', goNext);
-                navNext.addEventListener('touchend', goNext);
                 navNext.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' || e.key === ' ' || e.key === 'OK') goNext(e);
                 });
@@ -1282,8 +1289,6 @@
                     toggleFullscreen();
                 };
                 navCenter.addEventListener('click', goFullscreen);
-                navCenter.addEventListener('pointerup', goFullscreen);
-                navCenter.addEventListener('touchend', goFullscreen);
                 navCenter.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter' || e.key === ' ' || e.key === 'OK') goFullscreen(e);
                 });
@@ -1342,7 +1347,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781731406963.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781736217577.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1350,7 +1355,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781731406963.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781736217577.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
