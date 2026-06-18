@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781816959030.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781820186561.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781816959030.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781820186561.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -383,13 +383,14 @@
             margin-bottom: 24px;
             line-height: 1.5;
         }
-        
+
         /* Botones de navegación transparentes - optimizados para no laggear el video */
         .channel-nav {
             position: absolute;
-            top: 50px;          /* dejar espacio arriba */
-            bottom: 90px;       /* dejar espacio abajo para controles nativos */
-            width: 25%;         /* mas ancho para facilitar click en TV */
+            top: 60px;          /* dejar espacio arriba */
+            bottom: 120px;      /* dejar espacio abajo para controles nativos */
+            width: 18%;         /* mas angosto para no tapar controles */
+            max-width: 160px;   /* limite maximo de ancho */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -409,18 +410,18 @@
             transition: none;   /* evitar repaints por transiciones */
         }
 
-        /* En fullscreen, activar controles */
+        /* En fullscreen, activar controles sin tapar controles nativos */
         .player-wrapper:fullscreen .channel-nav,
         .player-wrapper:-webkit-full-screen .channel-nav {
-            opacity: 0.25;
+            opacity: 0.45;
             pointer-events: auto;
-            bottom: 90px;
-            top: 50px;
-            width: 30%;
+            bottom: 140px;      /* mas espacio para barra de controles */
+            top: 70px;
+            width: 18%;
+            max-width: 180px;
             font-size: 4rem;
         }
 
-        /* En dispositivos touch/TV (sin hover preciso), activar controles */
         @media (hover: none), (pointer: coarse) {
             .channel-nav {
                 opacity: 0.25;
@@ -614,7 +615,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1781816959030.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781820186561.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -1396,7 +1397,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781816959030.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781820186561.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1404,7 +1405,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781816959030.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781820186561.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
