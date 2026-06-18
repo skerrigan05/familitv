@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781738361710.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781800114405.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781738361710.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781800114405.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -604,6 +604,7 @@
         let currentChannel = null;
         let hls = null;
         let latencyCheckInterval = null;
+        let loginEnabled = null;
         const video = document.getElementById('video');
         const LATENCY_CATCHUP_THRESHOLD_S = 15; // empezar a acelerar si >= 15s atras
         const LATENCY_NORMAL_THRESHOLD_S = 5;   // volver a 1.0x si <= 5s atras
@@ -613,7 +614,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1781738361710.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781800114405.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -634,6 +635,12 @@
         }
 
         function showLogin() {
+            if (loginEnabled === false) {
+                console.log('[Auth] Login desactivado: evitando mostrar login');
+                showApp();
+                loadChannels();
+                return;
+            }
             document.getElementById('loginOverlay').style.display = 'flex';
             document.getElementById('gridSection').style.display = 'none';
             document.getElementById('playerSection').classList.remove('active');
@@ -647,6 +654,7 @@
         }
 
         async function recoverSession() {
+            if (loginEnabled === false) return false;
             const deviceToken = getDeviceToken();
             if (!deviceToken) return false;
             try {
@@ -669,6 +677,11 @@
         }
 
         async function checkSession() {
+            if (loginEnabled === false) {
+                showApp();
+                loadChannels();
+                return;
+            }
             const token = getToken();
             if (token) {
                 try {
@@ -780,6 +793,21 @@
         function showAccessDenied() {
             if (accessDeniedShown) return;
             accessDeniedShown = true;
+
+            // Si el login está desactivado, nunca mostrar pantallas de acceso denegado/login.
+            // Solo recargamos el stream o volvemos a la grilla.
+            if (loginEnabled === false) {
+                accessDeniedShown = false;
+                console.log('[Auth] Login desactivado: ignorando error de autenticación');
+                if (currentChannel) {
+                    reloadStream();
+                } else {
+                    stopPlayer();
+                    showApp();
+                    loadChannels();
+                }
+                return;
+            }
 
             // En Smart TV nunca mostramos la pantalla de acceso suspendido;
             // intentamos recuperar la sesión silenciosamente.
@@ -1375,7 +1403,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781738361710.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781800114405.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1383,7 +1411,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781738361710.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781800114405.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
@@ -1426,20 +1454,31 @@
                 try {
                     const res = await fetch(apiUrl('/api/auth/config'), { cache: 'no-store' });
                     const data = await res.json();
-                    if (data.loginEnabled === false) {
+                    loginEnabled = data.loginEnabled === true;
+
+                    if (!loginEnabled) {
                         console.log('[Auth] Login desactivado. Acceso directo.');
+                        // Limpiar tokens antiguos para no enviar headers inválidos
+                        clearToken();
+                        clearDeviceToken();
                         showApp();
                         loadChannels();
                         return;
                     }
                 } catch (e) {
                     console.error('[Auth] Error consultando config de login:', e);
+                    // Si no podemos consultar, asumir login desactivado para no bloquear
+                    loginEnabled = false;
                 }
-                checkSession();
+                if (loginEnabled) {
+                    checkSession();
+                } else {
+                    showApp();
+                    loadChannels();
+                }
             }
 
-            // Cargar términos de uso persistidos y arrancar
-            loadTerms();
+            // Arrancar app
             initApp();
         });
     </script>
