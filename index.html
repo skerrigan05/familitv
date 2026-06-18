@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1781802489902.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1781816959030.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1781802489902.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1781816959030.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -614,7 +614,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1781802489902.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1781816959030.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -629,9 +629,14 @@
         function setDeviceToken(t) { localStorage.setItem(DEVICE_TOKEN_KEY, t); }
         function clearDeviceToken() { localStorage.removeItem(DEVICE_TOKEN_KEY); }
 
-        function isTV() {
+
+        function isSmartTV() {
             const ua = navigator.userAgent || '';
-            return /SMART-TV|Tizen|SamsungBrowser|Web0S|CrKey|Roku|AppleTV|HbbTV/i.test(ua);
+            return /SMART-TV|Tizen|SamsungBrowser|Web0S|WebOS|LG Browser|Android TV|AFTS|AFTSS|AFTMM|AFTTM|Roku\/DVP|Roku|CrKey|AppleTV|Apple TV|TV OS|BRAVIA|CEBrowser|VIDAA|Odin|HbbTV|NetCast/i.test(ua);
+        }
+
+        function isTV() {
+            return isSmartTV();
         }
 
         function showLogin() {
@@ -1003,21 +1008,14 @@
                         setStatus('live', 'EN VIVO');
                         startLatencyCatchUp();
 
-                        function attemptPlay(retries = 2, tryMuted = true) {
+                        function attemptPlay(retries = 2) {
                             if (!video) return;
                             const playPromise = video.play();
                             if (playPromise && typeof playPromise.then === 'function') {
                                 playPromise.catch(e => {
                                     console.log('[Player] Autoplay bloqueado:', e.message);
-                                    // Si falla por no estar muted, intentar muted como fallback
-                                    if (tryMuted && video.muted === false && e.name === 'NotAllowedError') {
-                                        video.muted = true;
-                                        console.log('[Player] Intentando autoplay muted como fallback');
-                                        setTimeout(() => attemptPlay(retries, false), 100);
-                                        return;
-                                    }
                                     if (retries > 0) {
-                                        setTimeout(() => attemptPlay(retries - 1, tryMuted), 300);
+                                        setTimeout(() => attemptPlay(retries - 1), 300);
                                     }
                                 });
                             }
@@ -1071,11 +1069,6 @@
                         if (!video.paused) return;
                         video.play().catch(e => {
                             console.log('[Player] Autoplay nativo bloqueado:', e.message);
-                            if (video.muted === false && e.name === 'NotAllowedError') {
-                                video.muted = true;
-                                console.log('[Player] Intentando autoplay muted como fallback (nativo)');
-                                video.play().catch(err => console.log('[Player] Autoplay muted nativo bloqueado:', err.message));
-                            }
                         });
                         setStatus('live', 'EN VIVO');
                     };
@@ -1403,7 +1396,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1781802489902.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1781816959030.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1411,7 +1404,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1781802489902.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1781816959030.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
