@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1783643136513.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1783643893410.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1783643136513.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1783643893410.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -615,7 +615,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1783643136513.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1783643893410.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -879,7 +879,7 @@
         function renderGrid() {
             const grid = document.getElementById('channelGrid');
             grid.innerHTML = channels.map(ch => `
-                <div class="channel-card ${ch.hasStream ? '' : 'disabled'}" 
+                <div class="channel-card ${ch.active !== false ? '' : 'disabled'}" 
                      onclick="playChannel('${ch.id}')"
                      style="--ch-color: ${ch.color}">
                     <div class="channel-number">${ch.number}</div>
@@ -895,7 +895,7 @@
         // Reproducir canal
         async function playChannel(channelId) {
             const channel = channels.find(c => c.id === channelId);
-            if (!channel || !channel.hasStream) return;
+            if (!channel || channel.active === false) return;
             
             currentChannel = channel;
             accessDeniedShown = false;
@@ -912,7 +912,7 @@
             document.getElementById('playerLogo').style.background = channel.color + '30';
             document.getElementById('playerLogo').style.color = channel.color;
             document.getElementById('playerChannel').textContent = channel.name;
-            setStatus('loading', 'Cargando...');
+            setStatus('loading', channel.hasStream ? 'Cargando...' : 'Iniciando bajo demanda...');
             
             // Cargar stream
             await loadStream(proxyUrl(channel.proxyUrl));
@@ -1137,7 +1137,7 @@
             }
         }
 
-        // Cambiar canal (anterior/siguiente) - salta canales sin stream
+        // Cambiar canal (anterior/siguiente) - salta canales inactivos
         function changeChannel(direction) {
             if (!currentChannel || channels.length === 0) return;
 
@@ -1149,15 +1149,15 @@
             let attempts = 0;
             let nextChannel = null;
 
-            // Buscar el siguiente canal con stream, dando toda la vuelta si es necesario
+            // Buscar el siguiente canal activo, dando toda la vuelta si es necesario
             do {
                 attempts++;
                 newIndex = (newIndex + direction + total) % total;
                 nextChannel = channels[newIndex];
-                if (nextChannel && nextChannel.hasStream) break;
+                if (nextChannel && nextChannel.active !== false) break;
             } while (attempts < total);
 
-            if (nextChannel && nextChannel.hasStream && nextChannel.id !== currentChannel.id) {
+            if (nextChannel && nextChannel.active !== false && nextChannel.id !== currentChannel.id) {
                 showChannelIndicator(nextChannel.name);
                 playChannel(nextChannel.id);
             }
@@ -1397,7 +1397,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1783643136513.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1783643893410.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1405,7 +1405,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1783643136513.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1783643893410.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
