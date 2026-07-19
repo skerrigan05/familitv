@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1784488531056.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1784489534610.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1784488531056.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1784489534610.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -615,7 +615,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1784488531056.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1784489534610.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -937,49 +937,76 @@
                     const isChv = currentChannel && currentChannel.id === 'chv';
                     const isDai = isChv || proxyUrl.includes('/proxy/chv/');
 
-                    hls = new Hls({
+                    // Configuración optimizada para redes inestables
+                    const hlsConfig = {
                         enableWorker: true,
-                        lowLatencyMode: isDai ? false : true,
+                        lowLatencyMode: false,
                         debug: false,
-                        capLevelToPlayerSize: isDai ? false : true,
-                        startLevel: isDai ? -1 : 0,
-                        abrEwmaDefaultEstimate: isDai ? 5000000 : 200000,
+                        capLevelToPlayerSize: false,
+                        capLevelOnFPSDrop: false,
+                        startLevel: -1,
+                        testBandwidth: true,
+                        abrEwmaDefaultEstimate: 2000000,
+                        abrEwmaFastLive: 5,
+                        abrEwmaSlowLive: 15,
                         abrBandWidthFactor: 0.95,
-                        abrBandWidthUpFactor: 0.7,
-                        maxBufferLength: isDai ? 60 : 20,
-                        maxMaxBufferLength: isDai ? 120 : 30,
-                        backBufferLength: isDai ? 30 : 10,
-                        liveSyncDurationCount: 3,
-                        liveMaxLatencyDurationCount: 5,
+                        abrBandWidthUpFactor: 0.85,
+                        abrSwitchInterval: 8,
+                        minAutoBitrate: 0,
+                        maxStarvationDelay: 8,
+                        maxLoadingDelay: 8,
+                        maxBufferLength: isDai ? 30 : 15,
+                        maxMaxBufferLength: isDai ? 60 : 30,
+                        backBufferLength: isDai ? 10 : 5,
+                        maxBufferSize: 60 * 1000 * 1000,
+                        maxBufferHole: 0.3,
+                        highBufferWatchdogPeriod: 4,
+                        nudgeOffset: 0.3,
+                        nudgeMaxRetry: 6,
+                        nudgeOnVideoHole: true,
+                        skipBufferHolePadding: 0.3,
+                        maxFragLookUpTolerance: 0.5,
+                        stretchShortVideoTrack: true,
+                        forceKeyFrameOnDiscontinuity: false,
+                        liveSyncDurationCount: 5,
+                        liveMaxLatencyDurationCount: 12,
+                        liveSyncOnStallIncrease: 1,
+                        maxLiveSyncPlaybackRate: 1,
+                        initialLiveManifestSize: 3,
+                        startOnSegmentBoundary: true,
                         fragLoadPolicy: {
                             default: {
-                                maxTimeToFirstByteMs: 10000,
-                                maxLoadTimeMs: 20000,
+                                maxTimeToFirstByteMs: 12000,
+                                maxLoadTimeMs: 30000,
                                 timeoutRetry: {
-                                    maxNumRetry: 4,
+                                    maxNumRetry: 5,
                                     retryDelayMs: 1000,
-                                    maxRetryDelayMs: 8000
+                                    maxRetryDelayMs: 10000,
+                                    backoff: 'exponential'
                                 },
                                 errorRetry: {
-                                    maxNumRetry: 4,
+                                    maxNumRetry: 6,
                                     retryDelayMs: 1000,
-                                    maxRetryDelayMs: 8000
+                                    maxRetryDelayMs: 15000,
+                                    backoff: 'exponential'
                                 }
                             }
                         },
                         playlistLoadPolicy: {
                             default: {
-                                maxTimeToFirstByteMs: 10000,
-                                maxLoadTimeMs: 20000,
+                                maxTimeToFirstByteMs: 12000,
+                                maxLoadTimeMs: 30000,
                                 timeoutRetry: {
-                                    maxNumRetry: 3,
+                                    maxNumRetry: 4,
                                     retryDelayMs: 1000,
-                                    maxRetryDelayMs: 8000
+                                    maxRetryDelayMs: 10000,
+                                    backoff: 'exponential'
                                 },
                                 errorRetry: {
-                                    maxNumRetry: 3,
+                                    maxNumRetry: 5,
                                     retryDelayMs: 1000,
-                                    maxRetryDelayMs: 8000
+                                    maxRetryDelayMs: 15000,
+                                    backoff: 'exponential'
                                 }
                             }
                         },
@@ -1002,7 +1029,9 @@
                             }
                             return new Request(context.url, initParams);
                         }
-                    });
+                    };
+
+                    hls = new Hls(hlsConfig);
 
                     hls.loadSource(proxyUrl);
                     hls.attachMedia(video);
@@ -1413,7 +1442,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1784488531056.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1784489534610.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1421,7 +1450,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1784488531056.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1784489534610.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
