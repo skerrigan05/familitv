@@ -6,10 +6,10 @@
     <title>FamiliTV - Canales de Chile</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script>
-        // Espacio de nombres global; config.1784487163058.js sobreescribe BASE_URL si existe
+        // Espacio de nombres global; config.1784488531056.js sobreescribe BASE_URL si existe
         window.FAMILITV = window.FAMILITV || {};
         window.FAMILITV.BASE_URL = '';
-        document.write('<script src="config.1784487163058.js?t=' + new Date().getTime() + '"><\/script>');
+        document.write('<script src="config.1784488531056.js?t=' + new Date().getTime() + '"><\/script>');
     </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -615,7 +615,7 @@
         let accessDeniedShown = false;
         let currentToken = null; // cache en memoria para evitar race conditions con localStorage
 
-        // BASE_URL puede venir de config.1784487163058.js (GitHub Pages / dominio fijo)
+        // BASE_URL puede venir de config.1784488531056.js (GitHub Pages / dominio fijo)
         const BASE = (window.FAMILITV && window.FAMILITV.BASE_URL)
             ? window.FAMILITV.BASE_URL.replace(/\/$/, '')
             : '';
@@ -934,18 +934,21 @@
                 if (Hls.isSupported()) {
                     console.log('[Player] Usando HLS.js');
 
+                    const isChv = currentChannel && currentChannel.id === 'chv';
+                    const isDai = isChv || proxyUrl.includes('/proxy/chv/');
+
                     hls = new Hls({
                         enableWorker: true,
-                        lowLatencyMode: true,
+                        lowLatencyMode: isDai ? false : true,
                         debug: false,
-                        capLevelToPlayerSize: true,
-                        startLevel: 0,
-                        abrEwmaDefaultEstimate: 200000,
+                        capLevelToPlayerSize: isDai ? false : true,
+                        startLevel: isDai ? -1 : 0,
+                        abrEwmaDefaultEstimate: isDai ? 5000000 : 200000,
                         abrBandWidthFactor: 0.95,
                         abrBandWidthUpFactor: 0.7,
-                        maxBufferLength: 20,
-                        maxMaxBufferLength: 30,
-                        backBufferLength: 10,
+                        maxBufferLength: isDai ? 60 : 20,
+                        maxMaxBufferLength: isDai ? 120 : 30,
+                        backBufferLength: isDai ? 30 : 10,
                         liveSyncDurationCount: 3,
                         liveMaxLatencyDurationCount: 5,
                         fragLoadPolicy: {
@@ -1027,8 +1030,8 @@
                     hls.on(Hls.Events.ERROR, (event, data) => {
                         console.error('[Player] HLS Error:', data.type, data.details);
                         
-                        // Si es error de red, bajar calidad automaticamente si es posible
-                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                        // Si es error de red leve, intentar bajar calidad solo en canales no-DAI
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !isDai) {
                             const currentLevel = hls.currentLevel;
                             if (currentLevel > 0) {
                                 console.log('[Player] Bajando calidad por inestabilidad de red...');
@@ -1043,12 +1046,25 @@
                                     console.log('[Player] Error de red fatal, reintentando...');
                                     showError('Red inestable, esperando conexión...');
                                     reconnectPending = true;
-                                    // Forzar nivel mas bajo si hay disponibles
-                                    if (hls.levels && hls.levels.length > 1) {
+                                    // Para CHV/DAI no forzamos calidad baja; recargamos fuente para mantener sesión
+                                    if (isDai) {
+                                        console.log('[Player] CHV: recargando fuente por error de red...');
+                                        hls.loadSource(proxyUrl);
+                                        hls.startLoad();
+                                    } else if (hls.levels && hls.levels.length > 1) {
                                         hls.currentLevel = 0;
                                         hls.loadLevel = 0;
+                                        setTimeout(() => hls.startLoad(), 2000);
+                                    } else {
+                                        setTimeout(() => hls.startLoad(), 2000);
                                     }
-                                    setTimeout(() => hls.startLoad(), 2000);
+                                    // Si después de 8s sigue roto, recargar stream completo
+                                    setTimeout(() => {
+                                        if (currentChannel && reconnectPending) {
+                                            console.log('[Player] Recovery falló, recargando stream...');
+                                            loadStream(proxyUrl(currentChannel.proxyUrl));
+                                        }
+                                    }, 8000);
                                     break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
                                     console.log('[Player] Error de media, recuperando...');
@@ -1397,7 +1413,7 @@
 
                 // Refrescar BASE_URL por si cambio (GitHub Pages / tunel nuevo)
                 try {
-                    const res = await fetch('config.1784487163058.js?t=' + Date.now(), { cache: 'no-store' });
+                    const res = await fetch('config.1784488531056.js?t=' + Date.now(), { cache: 'no-store' });
                     const text = await res.text();
                     const match = text.match(/window\.FAMILITV\.BASE_URL\s*=\s*['"]([^'"]+)['"]/);
                     if (match && match[1]) {
@@ -1405,7 +1421,7 @@
                         console.log('[Reconnect] BASE_URL actualizado:', match[1]);
                     }
                 } catch (e) {
-                    console.log('[Reconnect] No se pudo refrescar config.1784487163058.js:', e.message);
+                    console.log('[Reconnect] No se pudo refrescar config.1784488531056.js:', e.message);
                 }
 
                 // Recargar el stream del canal actual
